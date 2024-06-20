@@ -30,7 +30,7 @@ Try {
     }
     Write-Log "Administrative privileges confirmed."
 } Catch {
-    Write-Log "Error checking administrative privileges: $_" "ERROR"
+    Write-Log "Error checking administrative privileges: $($_.Exception.Message)" "ERROR"
     Exit 1
 }
 
@@ -46,18 +46,17 @@ Try {
         Write-Log "The folder $DebloatFolder was successfully created."
     }
 } Catch {
-    Write-Log "Error creating folder ${DebloatFolder}: $_" "ERROR"
+    Write-Log "Error creating folder $DebloatFolder: $($_.Exception.Message)" "ERROR"
     Exit 1
 }
 
 # Start transcript
 Try {
-    Start-Transcript -Path "C:\Celeratec\Logs\Debloat.log" -Append
+    Start-Transcript -Path "C:\Celeratec\Logs\DebloatTranscript.log" -Append
     Write-Log "Transcript started."
 } Catch {
-    Write-Log "Error starting transcript: $_" "ERROR"
+    Write-Log "Error starting transcript: $($_.Exception.Message)" "ERROR"
 }
-
 
 # Enhanced Remove AppX Packages function
 function Remove-AppxPackages {
@@ -75,13 +74,13 @@ function Remove-AppxPackages {
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 & $removeCommand
-                Write-Log "Successfully removed $packageName."
+                Write-Host "Successfully removed $packageName."
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to remove $packageName failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to remove $packageName failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to remove $packageName after 3 attempts." "ERROR"
+                    Write-Host "Failed to remove $packageName after 3 attempts." "ERROR"
                 }
             }
         }
@@ -90,17 +89,17 @@ function Remove-AppxPackages {
     Try {
         $provisionedPackages = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -notin $appsToIgnore}
         foreach ($package in $provisionedPackages) {
-            Write-Log "Attempting to remove provisioned package: $($package.DisplayName)"
+            Write-Host "Attempting to remove provisioned package: $($package.DisplayName)"
             Remove-PackageWithRetry -removeCommand {Remove-AppxProvisionedPackage -PackageName $package.PackageName -Online -ErrorAction Stop} -packageName $package.DisplayName
         }
 
         $appxPackages = Get-AppxPackage -AllUsers | Where-Object {$_.Name -notin $appsToIgnore}
         foreach ($package in $appxPackages) {
-            Write-Log "Attempting to remove Appx package: $($package.Name)"
+            Write-Host "Attempting to remove Appx package: $($package.Name)"
             Remove-PackageWithRetry -removeCommand {Remove-AppxPackage -Package $package.PackageFullName -AllUsers -ErrorAction Stop} -packageName $package.Name
         }
     } Catch {
-        Write-Log "Error removing AppX packages: $_" "ERROR"
+        Write-Host "Error removing AppX packages: $_" "ERROR"
     }
 }
 
@@ -198,13 +197,13 @@ function Remove-Bloatware {
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 & $removeCommand
-                Write-Log "Successfully removed $packageName."
+                Write-Host "Successfully removed $packageName."
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to remove $packageName failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to remove $packageName failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to remove $packageName after 3 attempts." "ERROR"
+                    Write-Host "Failed to remove $packageName after 3 attempts." "ERROR"
                 }
             }
         }
@@ -214,21 +213,21 @@ function Remove-Bloatware {
         Try {
             $provisionedPackage = Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like $bloat -ErrorAction SilentlyContinue
             if ($provisionedPackage) {
-                Write-Log "Attempting to remove provisioned package for $bloat."
+                Write-Host "Attempting to remove provisioned package for $bloat."
                 Remove-PackageWithRetry -removeCommand {Remove-AppxProvisionedPackage -PackageName $provisionedPackage.PackageName -Online -ErrorAction Stop} -packageName $bloat
             } else {
-                Write-Log "Provisioned package for $bloat not found."
+                Write-Host "Provisioned package for $bloat not found."
             }
 
             $appxPackage = Get-AppxPackage -AllUsers | Where-Object Name -like $bloat -ErrorAction SilentlyContinue
             if ($appxPackage) {
-                Write-Log "Attempting to remove $bloat."
+                Write-Host "Attempting to remove $bloat."
                 Remove-PackageWithRetry -removeCommand {Remove-AppxPackage -Package $appxPackage.PackageFullName -AllUsers -ErrorAction Stop} -packageName $bloat
             } else {
-                Write-Log "$bloat not found."
+                Write-Host "$bloat not found."
             }
         } Catch {
-            Write-Log "Error removing bloatware $bloat: $_" "ERROR"
+            Write-Host "Error removing bloatware $bloat: $_" "ERROR"
         }
     }
 }
@@ -319,13 +318,13 @@ function Remove-RegistryKeys {
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Remove-Item $key -Recurse -ErrorAction Stop
-                Write-Log "Successfully removed $key from registry."
+                Write-Host "Successfully removed $key from registry."
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to remove $key from registry failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to remove $key from registry failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to remove $key from registry after 3 attempts." "ERROR"
+                    Write-Host "Failed to remove $key from registry after 3 attempts." "ERROR"
                 }
             }
         }
@@ -333,10 +332,10 @@ function Remove-RegistryKeys {
 
     foreach ($key in $keys) {
         Try {
-            Write-Log "Removing $key from registry"
+            Write-Host "Removing $key from registry"
             Remove-KeyWithRetry -key $key
         } Catch {
-            Write-Log "Error removing registry key ${key}: $_" "ERROR"
+            Write-Host "Error removing registry key $key: $_" "ERROR"
         }
     }
 }
@@ -364,105 +363,100 @@ $keys = @(
 
 Remove-RegistryKeys -keys $keys
 
-
 # Disable Windows Feedback Experience
 function Disable-WindowsFeedback {
     Try {
-        Write-Log "Disabling Windows Feedback Experience program"
+        Write-Host "Disabling Windows Feedback Experience program"
         $Advertising = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo"
         If (!(Test-Path $Advertising)) {
             New-Item $Advertising
-            Write-Log "Created registry path: $Advertising"
+            Write-Host "Created registry path: $Advertising"
         }
         If (Test-Path $Advertising) {
             Set-ItemProperty $Advertising Enabled -Value 0
-            Write-Log "Set Enabled property to 0 at $Advertising"
+            Write-Host "Set Enabled property to 0 at $Advertising"
         }
-        Write-Log "Windows Feedback Experience disabled"
+        Write-Host "Windows Feedback Experience disabled"
     } Catch {
-        Write-Log "Error disabling Windows Feedback Experience: $_" "ERROR"
+        Write-Host "Error disabling Windows Feedback Experience: $_" "ERROR"
     }
 }
 
 Disable-WindowsFeedback
 
-
 # Stop Cortana from being used as part of your Windows Search Function
 function Stop-CortanaSearch {
     Try {
-        Write-Log "Stopping Cortana from being used as part of your Windows Search Function"
+        Write-Host "Stopping Cortana from being used as part of your Windows Search Function"
         $Search = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search"
         If (!(Test-Path $Search)) {
             New-Item $Search
-            Write-Log "Created registry path: $Search"
+            Write-Host "Created registry path: $Search"
         }
         If (Test-Path $Search) {
             Set-ItemProperty $Search AllowCortana -Value 0
-            Write-Log "Set AllowCortana property to 0 at $Search"
+            Write-Host "Set AllowCortana property to 0 at $Search"
         }
-        Write-Log "Cortana stopped from being used in Windows Search Function"
+        Write-Host "Cortana stopped from being used in Windows Search Function"
     } Catch {
-        Write-Log "Error stopping Cortana from being used in Windows Search Function: $_" "ERROR"
+        Write-Host "Error stopping Cortana from being used in Windows Search Function: $_" "ERROR"
     }
 }
 
 Stop-CortanaSearch
 
-
 # Disable Web Search in Start Menu
 function Disable-WebSearch {
     Try {
-        Write-Log "Disabling Bing Search in Start Menu"
+        Write-Host "Disabling Bing Search in Start Menu"
         $WebSearch = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search"
         
         if (!(Test-Path $WebSearch)) {
             New-Item $WebSearch
-            Write-Log "Created registry path: $WebSearch"
+            Write-Host "Created registry path: $WebSearch"
         }
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Set-ItemProperty $WebSearch DisableWebSearch -Value 1
-                Write-Log "Set DisableWebSearch property to 1 at $WebSearch"
-                Write-Log "Bing Search disabled in Start Menu"
+                Write-Host "Set DisableWebSearch property to 1 at $WebSearch"
+                Write-Host "Bing Search disabled in Start Menu"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set DisableWebSearch property at $WebSearch failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set DisableWebSearch property at $WebSearch failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set DisableWebSearch property at $WebSearch after 3 attempts." "ERROR"
+                    Write-Host "Failed to set DisableWebSearch property at $WebSearch after 3 attempts." "ERROR"
                 }
             }
         }
     } Catch {
-        Write-Log "Error disabling Bing Search in Start Menu: $_" "ERROR"
+        Write-Host "Error disabling Bing Search in Start Menu: $_" "ERROR"
     }
 }
-
-
 
 Disable-WebSearch
 
 # Loop through all user SIDs in the registry and disable Bing Search
 function Disable-BingSearchForAllUsers {
     Try {
-        Write-Log "Disabling Bing Search for all users"
+        Write-Host "Disabling Bing Search for all users"
         $UserSIDs = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" | Select-Object -ExpandProperty PSChildName
         foreach ($sid in $UserSIDs) {
             $WebSearch = "Registry::HKU\$sid\SOFTWARE\Microsoft\Windows\CurrentVersion\Search"
             if (!(Test-Path $WebSearch)) {
                 New-Item $WebSearch
-                Write-Log "Created registry path: $WebSearch for user SID: $sid"
+                Write-Host "Created registry path: $WebSearch for user SID: $sid"
             }
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $WebSearch BingSearchEnabled -Value 0
-                    Write-Log "Set BingSearchEnabled property to 0 at $WebSearch for user SID: $sid"
+                    Write-Host "Set BingSearchEnabled property to 0 at $WebSearch for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set BingSearchEnabled property at $WebSearch for user SID: $sid failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set BingSearchEnabled property at $WebSearch for user SID: $sid failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set BingSearchEnabled property at $WebSearch for user SID: $sid after 3 attempts." "ERROR"
+                        Write-Host "Failed to set BingSearchEnabled property at $WebSearch for user SID: $sid after 3 attempts." "ERROR"
                     }
                 }
             }
@@ -470,98 +464,92 @@ function Disable-BingSearchForAllUsers {
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Set-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" BingSearchEnabled -Value 0
-                Write-Log "Set BingSearchEnabled property to 0 at HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search"
-                Write-Log "Bing Search disabled for all users"
+                Write-Host "Set BingSearchEnabled property to 0 at HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search"
+                Write-Host "Bing Search disabled for all users"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set BingSearchEnabled property at HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set BingSearchEnabled property at HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set BingSearchEnabled property at HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search after 3 attempts." "ERROR"
+                    Write-Host "Failed to set BingSearchEnabled property at HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search after 3 attempts." "ERROR"
                 }
             }
         }
     } Catch {
-        Write-Log "Error disabling Bing Search for all users: $_" "ERROR"
+        Write-Host "Error disabling Bing Search for all users: $_" "ERROR"
     }
 }
-
-
 
 Disable-BingSearchForAllUsers
 
 # Stop the Windows Feedback Experience from sending anonymous data
 function Stop-FeedbackData {
     Try {
-        Write-Log "Stopping the Windows Feedback Experience program"
+        Write-Host "Stopping the Windows Feedback Experience program"
         $Period = "HKCU:\Software\Microsoft\Siuf\Rules"
         If (!(Test-Path $Period)) {
             New-Item $Period
-            Write-Log "Created registry path: $Period"
+            Write-Host "Created registry path: $Period"
         }
         Set-ItemProperty $Period PeriodInNanoSeconds -Value 0
-        Write-Log "Set PeriodInNanoSeconds property to 0 at $Period"
-        Write-Log "Windows Feedback Experience program stopped"
+        Write-Host "Set PeriodInNanoSeconds property to 0 at $Period"
+        Write-Host "Windows Feedback Experience program stopped"
     } Catch {
-        Write-Log "Error stopping the Windows Feedback Experience program: $_" "ERROR"
+        Write-Host "Error stopping the Windows Feedback Experience program: $_" "ERROR"
     }
 }
 
 Stop-FeedbackData
 
-
 # Loop and do the same for all user SIDs
 function Stop-FeedbackDataForAllUsers {
     Try {
-        Write-Log "Stopping the Windows Feedback Experience program for all users"
+        Write-Host "Stopping the Windows Feedback Experience program for all users"
         $UserSIDs = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" | Select-Object -ExpandProperty PSChildName
         foreach ($sid in $UserSIDs) {
             $Period = "Registry::HKU\$sid\Software\Microsoft\Siuf\Rules"
             if (!(Test-Path $Period)) {
                 New-Item $Period
-                Write-Log "Created registry path: $Period for user SID: $sid"
+                Write-Host "Created registry path: $Period for user SID: $sid"
             }
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $Period PeriodInNanoSeconds -Value 0
-                    Write-Log "Set PeriodInNanoSeconds property to 0 at $Period for user SID: $sid"
+                    Write-Host "Set PeriodInNanoSeconds property to 0 at $Period for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set PeriodInNanoSeconds property at $Period for user SID: $sid failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set PeriodInNanoSeconds property at $Period for user SID: $sid failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set PeriodInNanoSeconds property at $Period for user SID: $sid after 3 attempts." "ERROR"
+                        Write-Host "Failed to set PeriodInNanoSeconds property at $Period for user SID: $sid after 3 attempts." "ERROR"
                     }
                 }
             }
         }
-        Write-Log "Windows Feedback Experience program stopped for all users"
+        Write-Host "Windows Feedback Experience program stopped for all users"
     } Catch {
-        Write-Log "Error stopping the Windows Feedback Experience program for all users: $_" "ERROR"
+        Write-Host "Error stopping the Windows Feedback Experience program for all users: $_" "ERROR"
     }
 }
 
-
-
 Stop-FeedbackDataForAllUsers
-
 
 # Prevent bloatware applications from returning and remove Start Menu suggestions
 function Prevent-BloatwareReturn {
     Try {
-        Write-Log "Adding Registry key to prevent bloatware apps from returning"
+        Write-Host "Adding Registry key to prevent bloatware apps from returning"
         $registryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent"
         $registryOEM = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
         If (!(Test-Path $registryPath)) {
             New-Item $registryPath
-            Write-Log "Created registry path: $registryPath"
+            Write-Host "Created registry path: $registryPath"
         }
         Set-ItemProperty $registryPath DisableWindowsConsumerFeatures -Value 1
-        Write-Log "Set DisableWindowsConsumerFeatures property to 1 at $registryPath"
+        Write-Host "Set DisableWindowsConsumerFeatures property to 1 at $registryPath"
 
         If (!(Test-Path $registryOEM)) {
             New-Item $registryOEM
-            Write-Log "Created registry path: $registryOEM"
+            Write-Host "Created registry path: $registryOEM"
         }
         Set-ItemProperty $registryOEM ContentDeliveryAllowed -Value 0
         Set-ItemProperty $registryOEM OemPreInstalledAppsEnabled -Value 0
@@ -569,27 +557,25 @@ function Prevent-BloatwareReturn {
         Set-ItemProperty $registryOEM PreInstalledAppsEverEnabled -Value 0
         Set-ItemProperty $registryOEM SilentInstalledAppsEnabled -Value 0
         Set-ItemProperty $registryOEM SystemPaneSuggestionsEnabled -Value 0
-        Write-Log "Set ContentDelivery properties to disable bloatware apps at $registryOEM"
-        Write-Log "Registry key added to prevent bloatware apps from returning"
+        Write-Host "Set ContentDelivery properties to disable bloatware apps at $registryOEM"
+        Write-Host "Registry key added to prevent bloatware apps from returning"
     } Catch {
-        Write-Log "Error adding Registry key to prevent bloatware apps from returning: $_" "ERROR"
+        Write-Host "Error adding Registry key to prevent bloatware apps from returning: $_" "ERROR"
     }
 }
 
-
 Prevent-BloatwareReturn
-
 
 # Loop through users and do the same
 function Prevent-BloatwareReturnForAllUsers {
     Try {
-        Write-Log "Adding Registry key to prevent bloatware apps from returning for all users"
+        Write-Host "Adding Registry key to prevent bloatware apps from returning for all users"
         $UserSIDs = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" | Select-Object -ExpandProperty PSChildName
         foreach ($sid in $UserSIDs) {
             $registryOEM = "Registry::HKU\$sid\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
             if (!(Test-Path $registryOEM)) {
                 New-Item $registryOEM
-                Write-Log "Created registry path: $registryOEM for user SID: $sid"
+                Write-Host "Created registry path: $registryOEM for user SID: $sid"
             }
             $properties = @{
                 ContentDeliveryAllowed = 0
@@ -603,43 +589,42 @@ function Prevent-BloatwareReturnForAllUsers {
                 for ($i = 0; $i -lt 3; $i++) {
                     Try {
                         Set-ItemProperty $registryOEM $property -Value $properties[$property]
-                        Write-Log "Set $property property to $($properties[$property]) at $registryOEM for user SID: $sid"
+                        Write-Host "Set $property property to $($properties[$property]) at $registryOEM for user SID: $sid"
                         break
                     } Catch {
-                        Write-Log "Attempt $($i+1) to set $property property at $registryOEM for user SID: $sid failed: $_" "ERROR"
+                        Write-Host "Attempt $($i+1) to set $property property at $registryOEM for user SID: $sid failed: $_" "ERROR"
                         Start-Sleep -Seconds 5
                         if ($i -eq 2) {
-                            Write-Log "Failed to set $property property at $registryOEM for user SID: $sid after 3 attempts." "ERROR"
+                            Write-Host "Failed to set $property property at $registryOEM for user SID: $sid after 3 attempts." "ERROR"
                         }
                     }
                 }
             }
         }
-        Write-Log "Registry key added to prevent bloatware apps from returning for all users"
+        Write-Host "Registry key added to prevent bloatware apps from returning for all users"
     } Catch {
-        Write-Log "Error adding Registry key to prevent bloatware apps from returning for all users: $_" "ERROR"
+        Write-Host "Error adding Registry key to prevent bloatware apps from returning for all users: $_" "ERROR"
     }
 }
-
 
 Prevent-BloatwareReturnForAllUsers
 
 # Prepare Mixed Reality Portal for removal
 function Prepare-MixedRealityPortalRemoval {
     Try {
-        Write-Log "Setting Mixed Reality Portal value to 0 so that you can uninstall it in Settings"
+        Write-Host "Setting Mixed Reality Portal value to 0 so that you can uninstall it in Settings"
         $Holo = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Holographic"
         if (Test-Path $Holo) {
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $Holo FirstRunSucceeded -Value 0
-                    Write-Log "Set FirstRunSucceeded property to 0 at $Holo"
+                    Write-Host "Set FirstRunSucceeded property to 0 at $Holo"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set FirstRunSucceeded property at $Holo failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set FirstRunSucceeded property at $Holo failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set FirstRunSucceeded property at $Holo after 3 attempts." "ERROR"
+                        Write-Host "Failed to set FirstRunSucceeded property at $Holo after 3 attempts." "ERROR"
                     }
                 }
             }
@@ -653,32 +638,30 @@ function Prepare-MixedRealityPortalRemoval {
                 for ($i = 0; $i -lt 3; $i++) {
                     Try {
                         Set-ItemProperty $Holo FirstRunSucceeded -Value 0
-                        Write-Log "Set FirstRunSucceeded property to 0 at $Holo for user SID: $sid"
+                        Write-Host "Set FirstRunSucceeded property to 0 at $Holo for user SID: $sid"
                         break
                     } Catch {
-                        Write-Log "Attempt $($i+1) to set FirstRunSucceeded property at $Holo for user SID: $sid failed: $_" "ERROR"
+                        Write-Host "Attempt $($i+1) to set FirstRunSucceeded property at $Holo for user SID: $sid failed: $_" "ERROR"
                         Start-Sleep -Seconds 5
                         if ($i -eq 2) {
-                            Write-Log "Failed to set FirstRunSucceeded property at $Holo for user SID: $sid after 3 attempts." "ERROR"
+                            Write-Host "Failed to set FirstRunSucceeded property at $Holo for user SID: $sid after 3 attempts." "ERROR"
                         }
                     }
                 }
             }
         }
-        Write-Log "Mixed Reality Portal value set to 0 for all users"
+        Write-Host "Mixed Reality Portal value set to 0 for all users"
     } Catch {
-        Write-Log "Error setting Mixed Reality Portal value to 0: $_" "ERROR"
+        Write-Host "Error setting Mixed Reality Portal value to 0: $_" "ERROR"
     }
 }
 
-
 Prepare-MixedRealityPortalRemoval
-
 
 # Disable Wi-Fi Sense
 function Disable-WiFiSense {
     Try {
-        Write-Log "Disabling Wi-Fi Sense"
+        Write-Host "Disabling Wi-Fi Sense"
         $WifiSense1 = "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting"
         $WifiSense2 = "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots"
         $WifiSense3 = "HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config"
@@ -687,16 +670,16 @@ function Disable-WiFiSense {
             Try {
                 if (!(Test-Path $WifiSense1)) {
                     New-Item $WifiSense1
-                    Write-Log "Created registry path: $WifiSense1"
+                    Write-Host "Created registry path: $WifiSense1"
                 }
                 Set-ItemProperty $WifiSense1 Value -Value 0
-                Write-Log "Set Value property to 0 at $WifiSense1"
+                Write-Host "Set Value property to 0 at $WifiSense1"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set Value property at $WifiSense1 failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set Value property at $WifiSense1 failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set Value property at $WifiSense1 after 3 attempts." "ERROR"
+                    Write-Host "Failed to set Value property at $WifiSense1 after 3 attempts." "ERROR"
                 }
             }
         }
@@ -705,16 +688,16 @@ function Disable-WiFiSense {
             Try {
                 if (!(Test-Path $WifiSense2)) {
                     New-Item $WifiSense2
-                    Write-Log "Created registry path: $WifiSense2"
+                    Write-Host "Created registry path: $WifiSense2"
                 }
                 Set-ItemProperty $WifiSense2 Value -Value 0
-                Write-Log "Set Value property to 0 at $WifiSense2"
+                Write-Host "Set Value property to 0 at $WifiSense2"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set Value property at $WifiSense2 failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set Value property at $WifiSense2 failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set Value property at $WifiSense2 after 3 attempts." "ERROR"
+                    Write-Host "Failed to set Value property at $WifiSense2 after 3 attempts." "ERROR"
                 }
             }
         }
@@ -722,47 +705,45 @@ function Disable-WiFiSense {
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Set-ItemProperty $WifiSense3 AutoConnectAllowedOEM -Value 0
-                Write-Log "Set AutoConnectAllowedOEM property to 0 at $WifiSense3"
+                Write-Host "Set AutoConnectAllowedOEM property to 0 at $WifiSense3"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set AutoConnectAllowedOEM property at $WifiSense3 failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set AutoConnectAllowedOEM property at $WifiSense3 failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set AutoConnectAllowedOEM property at $WifiSense3 after 3 attempts." "ERROR"
+                    Write-Host "Failed to set AutoConnectAllowedOEM property at $WifiSense3 after 3 attempts." "ERROR"
                 }
             }
         }
 
-        Write-Log "Wi-Fi Sense disabled"
+        Write-Host "Wi-Fi Sense disabled"
     } Catch {
-        Write-Log "Error disabling Wi-Fi Sense: $_" "ERROR"
+        Write-Host "Error disabling Wi-Fi Sense: $_" "ERROR"
     }
 }
 
-
-
 Disable-WiFiSense
 
-
+# Disable Live Tiles
 function Disable-LiveTiles {
     Try {
-        Write-Log "Disabling live tiles"
+        Write-Host "Disabling live tiles"
         $Live = "HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications"
         
         if (!(Test-Path $Live)) {
             New-Item $Live
-            Write-Log "Created registry path: $Live"
+            Write-Host "Created registry path: $Live"
         }
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Set-ItemProperty $Live NoTileApplicationNotification -Value 1
-                Write-Log "Set NoTileApplicationNotification property to 1 at $Live"
+                Write-Host "Set NoTileApplicationNotification property to 1 at $Live"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set NoTileApplicationNotification property at $Live failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set NoTileApplicationNotification property at $Live failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set NoTileApplicationNotification property at $Live after 3 attempts." "ERROR"
+                    Write-Host "Failed to set NoTileApplicationNotification property at $Live after 3 attempts." "ERROR"
                 }
             }
         }
@@ -773,51 +754,47 @@ function Disable-LiveTiles {
             $Live = "Registry::HKU\$sid\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications"
             if (!(Test-Path $Live)) {
                 New-Item $Live
-                Write-Log "Created registry path: $Live for user SID: $sid"
+                Write-Host "Created registry path: $Live for user SID: $sid"
             }
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $Live NoTileApplicationNotification -Value 1
-                    Write-Log "Set NoTileApplicationNotification property to 1 at $Live for user SID: $sid"
+                    Write-Host "Set NoTileApplicationNotification property to 1 at $Live for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set NoTileApplicationNotification property at $Live for user SID: $sid failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set NoTileApplicationNotification property at $Live for user SID: $sid failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set NoTileApplicationNotification property at $Live for user SID: $sid after 3 attempts." "ERROR"
+                        Write-Host "Failed to set NoTileApplicationNotification property at $Live for user SID: $sid after 3 attempts." "ERROR"
                     }
                 }
             }
         }
-        Write-Log "Live tiles disabled"
+        Write-Host "Live tiles disabled"
     } Catch {
-        Write-Log "Error disabling live tiles: $_" "ERROR"
+        Write-Host "Error disabling live tiles: $_" "ERROR"
     }
 }
 
-
-
-
-
 Disable-LiveTiles
 
-
+# Disable People icon on Taskbar
 function Disable-PeopleIcon {
     Try {
-        Write-Log "Disabling People icon on Taskbar"
+        Write-Host "Disabling People icon on Taskbar"
         $People = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\People'
         
         if (Test-Path $People) {
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $People -Name PeopleBand -Value 0
-                    Write-Log "Set PeopleBand property to 0 at $People"
+                    Write-Host "Set PeopleBand property to 0 at $People"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set PeopleBand property at $People failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set PeopleBand property at $People failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set PeopleBand property at $People after 3 attempts." "ERROR"
+                        Write-Host "Failed to set PeopleBand property at $People after 3 attempts." "ERROR"
                     }
                 }
             }
@@ -832,89 +809,85 @@ function Disable-PeopleIcon {
                 for ($i = 0; $i -lt 3; $i++) {
                     Try {
                         Set-ItemProperty $People -Name PeopleBand -Value 0
-                        Write-Log "Set PeopleBand property to 0 at $People for user SID: $sid"
+                        Write-Host "Set PeopleBand property to 0 at $People for user SID: $sid"
                         break
                     } Catch {
-                        Write-Log "Attempt $($i+1) to set PeopleBand property at $People for user SID: $sid failed: $_" "ERROR"
+                        Write-Host "Attempt $($i+1) to set PeopleBand property at $People for user SID: $sid failed: $_" "ERROR"
                         Start-Sleep -Seconds 5
                         if ($i -eq 2) {
-                            Write-Log "Failed to set PeopleBand property at $People for user SID: $sid after 3 attempts." "ERROR"
+                            Write-Host "Failed to set PeopleBand property at $People for user SID: $sid after 3 attempts." "ERROR"
                         }
                     }
                 }
             }
         }
-        Write-Log "People icon disabled on Taskbar for all users"
+        Write-Host "People icon disabled on Taskbar for all users"
     } Catch {
-        Write-Log "Error disabling People icon on Taskbar: $_" "ERROR"
+        Write-Host "Error disabling People icon on Taskbar: $_" "ERROR"
     }
 }
 
-
-
-
 Disable-PeopleIcon
-
 
 # Disable Cortana
 function Disable-Cortana {
     Try {
-        Write-Log "Disabling Cortana"
+        Write-Host "Disabling Cortana"
         $Cortana1 = "HKCU:\SOFTWARE\Microsoft\Personalization\Settings"
         $Cortana2 = "HKCU:\SOFTWARE\Microsoft\InputPersonalization"
         $Cortana3 = "HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore"
         
         if (!(Test-Path $Cortana1)) {
             New-Item $Cortana1
-            Write-Log "Created registry path: $Cortana1"
+            Write-Host "Created registry path: $Cortana1"
         }
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Set-ItemProperty $Cortana1 AcceptedPrivacyPolicy -Value 0
-                Write-Log "Set AcceptedPrivacyPolicy property to 0 at $Cortana1"
+                Write-Host "Set AcceptedPrivacyPolicy property to 0 at $Cortana1"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set AcceptedPrivacyPolicy property at $Cortana1 failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set AcceptedPrivacyPolicy property at $Cortana1 failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set AcceptedPrivacyPolicy property at $Cortana1 after 3 attempts." "ERROR"
+                    Write-Host "Failed to set AcceptedPrivacyPolicy property at $Cortana1 after 3 attempts." "ERROR"
                 }
             }
         }
 
         if (!(Test-Path $Cortana2)) {
             New-Item $Cortana2
-            Write-Log "Created registry path: $Cortana2"
+            Write-Host "Created registry path: $Cortana2"
         }
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Set-ItemProperty $Cortana2 RestrictImplicitTextCollection -Value 1
                 Set-ItemProperty $Cortana2 RestrictImplicitInkCollection -Value 1
-                Write-Log "Set RestrictImplicitTextCollection and RestrictImplicitInkCollection properties to 1 at $Cortana2"
+                Write-Host "Set RestrictImplicitTextCollection and RestrictImplicitInkCollection properties to 1 at $Cortana2"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set properties at $Cortana2 failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set properties at $Cortana2 failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set properties at $Cortana2 after 3 attempts." "ERROR"
+                    Write-Host "Failed to set properties at $Cortana2 after 3 attempts." "ERROR"
                 }
             }
         }
 
         if (!(Test-Path $Cortana3)) {
             New-Item $Cortana3
-            Write-Log "Created registry path: $Cortana3"
+            Write-Host "Created registry path: $Cortana3"
         }
         for ($i = 0; $i -lt 3; $i++) {
             Try {
                 Set-ItemProperty $Cortana3 HarvestContacts -Value 0
-                Write-Log "Set HarvestContacts property to 0 at $Cortana3"
+                Write-Host "Set HarvestContacts property to 0 at $Cortana3"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set HarvestContacts property at $Cortana3 failed: $_" "ERROR"
+                Write-Host "Attempt $($i+1) to set HarvestContacts property at $Cortana3 failed: $_" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
-                    Write-Log "Failed to set HarvestContacts property at $Cortana3 after 3 attempts." "ERROR"
+                    Write-Host "Failed to set HarvestContacts property at $Cortana3 after 3 attempts." "ERROR"
                 }
             }
         }
@@ -928,170 +901,163 @@ function Disable-Cortana {
             
             if (!(Test-Path $Cortana1)) {
                 New-Item $Cortana1
-                Write-Log "Created registry path: $Cortana1 for user SID: $sid"
+                Write-Host "Created registry path: $Cortana1 for user SID: $sid"
             }
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $Cortana1 AcceptedPrivacyPolicy -Value 0
-                    Write-Log "Set AcceptedPrivacyPolicy property to 0 at $Cortana1 for user SID: $sid"
+                    Write-Host "Set AcceptedPrivacyPolicy property to 0 at $Cortana1 for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set AcceptedPrivacyPolicy property at $Cortana1 for user SID: $sid failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set AcceptedPrivacyPolicy property at $Cortana1 for user SID: $sid failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set AcceptedPrivacyPolicy property at $Cortana1 for user SID: $sid after 3 attempts." "ERROR"
+                        Write-Host "Failed to set AcceptedPrivacyPolicy property at $Cortana1 for user SID: $sid after 3 attempts." "ERROR"
                     }
                 }
             }
 
             if (!(Test-Path $Cortana2)) {
                 New-Item $Cortana2
-                Write-Log "Created registry path: $Cortana2 for user SID: $sid"
+                Write-Host "Created registry path: $Cortana2 for user SID: $sid"
             }
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $Cortana2 RestrictImplicitTextCollection -Value 1
                     Set-ItemProperty $Cortana2 RestrictImplicitInkCollection -Value 1
-                    Write-Log "Set RestrictImplicitTextCollection and RestrictImplicitInkCollection properties to 1 at $Cortana2 for user SID: $sid"
+                    Write-Host "Set RestrictImplicitTextCollection and RestrictImplicitInkCollection properties to 1 at $Cortana2 for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set properties at $Cortana2 for user SID: $sid failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set properties at $Cortana2 for user SID: $sid failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set properties at $Cortana2 for user SID: $sid after 3 attempts." "ERROR"
+                        Write-Host "Failed to set properties at $Cortana2 for user SID: $sid after 3 attempts." "ERROR"
                     }
                 }
             }
 
             if (!(Test-Path $Cortana3)) {
                 New-Item $Cortana3
-                Write-Log "Created registry path: $Cortana3 for user SID: $sid"
+                Write-Host "Created registry path: $Cortana3 for user SID: $sid"
             }
             for ($i = 0; $i -lt 3; $i++) {
                 Try {
                     Set-ItemProperty $Cortana3 HarvestContacts -Value 0
-                    Write-Log "Set HarvestContacts property to 0 at $Cortana3 for user SID: $sid"
+                    Write-Host "Set HarvestContacts property to 0 at $Cortana3 for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set HarvestContacts property at $Cortana3 for user SID: $sid failed: $_" "ERROR"
+                    Write-Host "Attempt $($i+1) to set HarvestContacts property at $Cortana3 for user SID: $sid failed: $_" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
-                        Write-Log "Failed to set HarvestContacts property at $Cortana3 for user SID: $sid after 3 attempts." "ERROR"
+                        Write-Host "Failed to set HarvestContacts property at $Cortana3 for user SID: $sid after 3 attempts." "ERROR"
                     }
                 }
             }
         }
-        Write-Log "Cortana disabled"
+        Write-Host "Cortana disabled"
     } Catch {
-        Write-Log "Error disabling Cortana: $_" "ERROR"
+        Write-Host "Error disabling Cortana: $_" "ERROR"
     }
 }
 
-
 Disable-Cortana
-
 
 # Remove 3D Objects from the 'My Computer' submenu in explorer
 function Remove-3DObjects {
     Try {
-        Write-Log "Removing 3D Objects from explorer 'My Computer' submenu"
+        Write-Host "Removing 3D Objects from explorer 'My Computer' submenu"
         $Objects32 = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"
         $Objects64 = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}"
         If (Test-Path $Objects32) {
             Remove-Item $Objects32 -Recurse
-            Write-Log "Removed $Objects32"
+            Write-Host "Removed $Objects32"
         }
         If (Test-Path $Objects64) {
             Remove-Item $Objects64 -Recurse
-            Write-Log "Removed $Objects64"
+            Write-Host "Removed $Objects64"
         }
-        Write-Log "3D Objects removed from explorer 'My Computer' submenu"
+        Write-Host "3D Objects removed from explorer 'My Computer' submenu"
     } Catch {
-        Write-Log "Error removing 3D Objects from explorer 'My Computer' submenu: $_" "ERROR"
+        Write-Host "Error removing 3D Objects from explorer 'My Computer' submenu: $_" "ERROR"
     }
 }
 
 Remove-3DObjects
 
-
 # Remove the Microsoft Feeds from displaying
 function Remove-MicrosoftFeeds {
     Try {
-        Write-Log "Removing Microsoft Feeds from displaying"
+        Write-Host "Removing Microsoft Feeds from displaying"
         $registryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds"
         $Name = "EnableFeeds"
         $value = "0"
 
         if (!(Test-Path $registryPath)) {
             New-Item -Path $registryPath -Force | Out-Null
-            Write-Log "Created registry path: $registryPath"
+            Write-Host "Created registry path: $registryPath"
         }
         New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
-        Write-Log "Set EnableFeeds property to 0 at $registryPath"
-        Write-Log "Microsoft Feeds removed from displaying"
+        Write-Host "Set EnableFeeds property to 0 at $registryPath"
+        Write-Host "Microsoft Feeds removed from displaying"
     } Catch {
-        Write-Log "Error removing Microsoft Feeds from displaying: $_" "ERROR"
+        Write-Host "Error removing Microsoft Feeds from displaying: $_" "ERROR"
     }
 }
 
 Remove-MicrosoftFeeds
 
-
 # Kill Cortana again
 function Kill-Cortana {
     Try {
         Get-AppxPackage -AllUsers Microsoft.549981C3F5F10 | Remove-AppxPackage
-        Write-Log "Cortana removed again"
+        Write-Host "Cortana removed again"
     } Catch {
-        Write-Log "Error removing Cortana again: $_" "ERROR"
+        Write-Host "Error removing Cortana again: $_" "ERROR"
     }
 }
 
 Kill-Cortana
 
-
 # Disable scheduled tasks
 function Disable-ScheduledTasks {
     Try {
-        Write-Log "Disabling scheduled tasks"
+        Write-Host "Disabling scheduled tasks"
         $taskNames = @("XblGameSaveTaskLogon", "XblGameSaveTask", "Consolidator", "UsbCeip", "DmClient", "DmClientOnScenarioDownload")
         foreach ($taskName in $taskNames) {
             $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
             if ($null -ne $task) {
                 Disable-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-                Write-Log "Disabled scheduled task: $taskName"
+                Write-Host "Disabled scheduled task: $taskName"
             } else {
-                Write-Log "Scheduled task not found: $taskName"
+                Write-Host "Scheduled task not found: $taskName"
             }
         }
-        Write-Log "Scheduled tasks disabled"
+        Write-Host "Scheduled tasks disabled"
     } Catch {
-        Write-Log "Error disabling scheduled tasks: $_" "ERROR"
+        Write-Host "Error disabling scheduled tasks: $_" "ERROR"
     }
 }
 
 Disable-ScheduledTasks
 
-
 # Disable DiagTrack Services
 function Disable-DiagTrackServices {
     Try {
-        Write-Log "Stopping and disabling Diagnostics Tracking Service"
+        Write-Host "Stopping and disabling Diagnostics Tracking Service"
         Stop-Service "DiagTrack"
         Set-Service "DiagTrack" -StartupType Disabled
-        Write-Log "Diagnostics Tracking Service stopped and disabled"
+        Write-Host "Diagnostics Tracking Service stopped and disabled"
     } Catch {
-        Write-Log "Error stopping and disabling Diagnostics Tracking Service: $_" "ERROR"
+        Write-Host "Error stopping and disabling Diagnostics Tracking Service: $_" "ERROR"
     }
 }
 
 Disable-DiagTrackServices
 
-
 # Windows 11 Specific Customizations
 function Windows11-Customizations {
     Try {
-        Write-Log "Removing Windows 11 Customizations"
+        Write-Host "Removing Windows 11 Customizations"
         $packages = @(
             "Microsoft.XboxGamingOverlay",
             "Microsoft.XboxGameCallableUI",
@@ -1109,17 +1075,16 @@ function Windows11-Customizations {
             $appPackage = Get-AppxPackage -AllUsers $package -ErrorAction SilentlyContinue
             if ($appPackage) {
                 Remove-AppxPackage -Package $appPackage.PackageFullName -AllUsers
-                Write-Log "Removed $package"
+                Write-Host "Removed $package"
             }
         }
-        Write-Log "Windows 11 Customizations removed"
+        Write-Host "Windows 11 Customizations removed"
     } Catch {
-        Write-Log "Error removing Windows 11 Customizations: $_" "ERROR"
+        Write-Host "Error removing Windows 11 Customizations: $_" "ERROR"
     }
 }
 
 Windows11-Customizations
-
 
 # Remove Teams Chat
 function Remove-TeamsChat {
@@ -1129,44 +1094,43 @@ function Remove-TeamsChat {
         $ProvisionedPackage = Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq $WinPackage }
         If ($null -ne $WinPackage) {
             Remove-AppxPackage -Package $WinPackage.PackageFullName -AllUsers
-            Write-Log "Removed $MSTeams AppxPackage"
+            Write-Host "Removed $MSTeams AppxPackage"
         }
         If ($null -ne $ProvisionedPackage) {
             Remove-AppxProvisionedPackage -Online -Packagename $ProvisionedPackage.Packagename -AllUsers
-            Write-Log "Removed $MSTeams ProvisionedPackage"
+            Write-Host "Removed $MSTeams ProvisionedPackage"
         }
 
         # Tweak registry permissions
         Invoke-WebRequest -Uri "https://dfwmsp.com/RMS/SetACL.exe" -OutFile "C:\Celeratec\SetACL.exe"
         C:\Celeratec\SetACL.exe -on "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Communications" -ot reg -actn setowner -ownr "n:$everyone"
         C:\Celeratec\SetACL.exe -on "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Communications" -ot reg -actn ace -ace "n:$everyone;p:full"
-        Write-Log "Tweaked registry permissions for Communications"
+        Write-Host "Tweaked registry permissions for Communications"
 
         # Stop it from coming back
         $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Communications"
         If (!(Test-Path $registryPath)) {
             New-Item $registryPath
-            Write-Log "Created registry path: $registryPath"
+            Write-Host "Created registry path: $registryPath"
         }
         Set-ItemProperty $registryPath ConfigureChatAutoInstall -Value 0
-        Write-Log "Set ConfigureChatAutoInstall property to 0 at $registryPath"
+        Write-Host "Set ConfigureChatAutoInstall property to 0 at $registryPath"
 
         # Unpin it
         $registryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Chat"
         If (!(Test-Path $registryPath)) {
             New-Item $registryPath
-            Write-Log "Created registry path: $registryPath"
+            Write-Host "Created registry path: $registryPath"
         }
         Set-ItemProperty $registryPath "ChatIcon" -Value 2
-        Write-Log "Set ChatIcon property to 2 at $registryPath"
-        Write-Log "Removed Teams Chat"
+        Write-Host "Set ChatIcon property to 2 at $registryPath"
+        Write-Host "Removed Teams Chat"
     } Catch {
-        Write-Log "Error removing Teams Chat: $_" "ERROR"
+        Write-Host "Error removing Teams Chat: $_" "ERROR"
     }
 }
 
 Remove-TeamsChat
-
 
 # Disable Feeds
 function Disable-Feeds {
@@ -1174,51 +1138,49 @@ function Disable-Feeds {
         $registryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Dsh"
         If (!(Test-Path $registryPath)) {
             New-Item $registryPath
-            Write-Log "Created registry path: $registryPath"
+            Write-Host "Created registry path: $registryPath"
         }
         Set-ItemProperty $registryPath "AllowNewsAndInterests" -Value 0
-        Write-Log "Set AllowNewsAndInterests property to 0 at $registryPath"
-        Write-Log "Disabled Feeds"
+        Write-Host "Set AllowNewsAndInterests property to 0 at $registryPath"
+        Write-Host "Disabled Feeds"
     } Catch {
-        Write-Log "Error disabling Feeds: $_" "ERROR"
+        Write-Host "Error disabling Feeds: $_" "ERROR"
     }
 }
 
 Disable-Feeds
-
 
 # Windows Backup App
 function Remove-WindowsBackupApp {
     Try {
         $version = Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption
         if ($version -like "*Windows 10*") {
-            Write-Log "Removing Windows Backup"
+            Write-Host "Removing Windows Backup"
             $filepath = "C:\Windows\SystemApps\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\WindowsBackup\Assets"
             if (Test-Path $filepath) {
                 Remove-WindowsPackage -Online -PackageName "Microsoft-Windows-UserExperience-Desktop-Package~31bf3856ad364e35~amd64~~10.0.19041.3393"
-                Write-Log "Removed Windows Backup package"
+                Write-Host "Removed Windows Backup package"
 
                 # Add back snipping tool functionality
-                Write-Log "Adding Windows Shell Components"
+                Write-Host "Adding Windows Shell Components"
                 DISM /Online /Add-Capability /CapabilityName:Windows.Client.ShellComponents~~~~0.0.1.0
-                Write-Log "Components Added"
+                Write-Host "Components Added"
             }
-            Write-Log "Removed Windows Backup"
+            Write-Host "Removed Windows Backup"
         }
     } Catch {
-        Write-Log "Error removing Windows Backup: $_" "ERROR"
+        Write-Host "Error removing Windows Backup: $_" "ERROR"
     }
 }
 
 Remove-WindowsBackupApp
-
 
 # Windows CoPilot
 function Remove-WindowsCoPilot {
     Try {
         $version = Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty Caption
         if ($version -like "*Windows 11*") {
-            Write-Log "Removing Windows Copilot"
+            Write-Host "Removing Windows Copilot"
             # Define the registry key and value
             $registryPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot"
             $propertyName = "TurnOffWindowsCopilot"
@@ -1228,7 +1190,7 @@ function Remove-WindowsCoPilot {
             if (!(Test-Path $registryPath)) {
                 # If the registry key doesn't exist, create it
                 New-Item -Path $registryPath -Force | Out-Null
-                Write-Log "Created registry path: $registryPath"
+                Write-Host "Created registry path: $registryPath"
             }
 
             # Get the property value
@@ -1238,30 +1200,29 @@ function Remove-WindowsCoPilot {
             if ($null -eq $currentValue) {
                 # If the property doesn't exist, create it with the desired value
                 New-ItemProperty -Path $registryPath -Name $propertyName -Value $propertyValue -PropertyType DWORD -Force | Out-Null
-                Write-Log "Created $propertyName with value $propertyValue at $registryPath"
+                Write-Host "Created $propertyName with value $propertyValue at $registryPath"
             } elseif ($currentValue.$propertyName -ne $propertyValue) {
                 # If the property exists but its value is different, update the value
                 Set-ItemProperty -Path $registryPath -Name $propertyName -Value $propertyValue -Force | Out-Null
-                Write-Log "Set $propertyName to $propertyValue at $registryPath"
+                Write-Host "Set $propertyName to $propertyValue at $registryPath"
             }
 
-            Write-Log "Windows Copilot removed"
+            Write-Host "Windows Copilot removed"
         }
     } Catch {
-        Write-Log "Error removing Windows Copilot: $_" "ERROR"
+        Write-Host "Error removing Windows Copilot: $_" "ERROR"
     }
 }
 
 Remove-WindowsCoPilot
 
-
 # Kill process after debloat
 function Stop-ProcessAfterDebloat {
     Try {
         Get-Process | Where-Object { $_.Name -in @('YourPhone', 'CommunicationsApps', 'Microsoft.Photos', 'MixedReality.Portal') } | Stop-Process -Force
-        Write-Log "Stopped processes after debloat"
+        Write-Host "Stopped processes after debloat"
     } Catch {
-        Write-Log "Error stopping processes after debloat: $_" "ERROR"
+        Write-Host "Error stopping processes after debloat: $_" "ERROR"
     }
 }
 
@@ -1312,7 +1273,6 @@ function Clear-StartMenu {
     }
 }
 
-
 Clear-StartMenu
 
 # Remove Xbox Gaming
@@ -1329,9 +1289,9 @@ function Remove-XboxGaming {
             Set-ScheduledTask -TaskPath $task.TaskPath -Enabled $false
         }
 
-        # Check if GamePresenceWriter.exe exists
+        # Check if GameBarPresenceWriter.exe exists
         if (Test-Path "$env:WinDir\System32\GameBarPresenceWriter.exe") {
-            Write-Host "GamePresenceWriter.exe exists"
+            Write-Host "GameBarPresenceWriter.exe exists"
             C:\Celeratec\SetACL.exe -on "$env:WinDir\System32\GameBarPresenceWriter.exe" -ot file -actn setowner -ownr "n:$everyone"
             C:\Celeratec\SetACL.exe -on "$env:WinDir\System32\GameBarPresenceWriter.exe" -ot file -actn ace -ace "n:$everyone;p:full"
             $NewAcl = Get-Acl -Path "$env:WinDir\System32\GameBarPresenceWriter.exe"
@@ -1345,7 +1305,7 @@ function Remove-XboxGaming {
             Stop-Process -Name "GameBarPresenceWriter.exe" -Force
             Remove-Item "$env:WinDir\System32\GameBarPresenceWriter.exe" -Force -Confirm:$false
         } else {
-            Write-Host "GamePresenceWriter.exe does not exist"
+            Write-Host "GameBarPresenceWriter.exe does not exist"
         }
 
         New-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\GameDVR" -Name "AllowgameDVR" -PropertyType DWORD -Value 0 -Force
@@ -1370,7 +1330,7 @@ function Disable-EdgeSurfGame {
         New-ItemProperty -Path $surf -Name 'AllowSurfGame' -Value 0 -PropertyType DWord
         Write-Host "Edge Surf Game disabled"
     } Catch {
-        Write-Host "Error disabling Edge Surf Game: $_"
+        Write-Host "Error disabling Edge Surf Game: $_" "ERROR"
     }
 }
 
@@ -2009,12 +1969,12 @@ Remove-ManufacturerBloat
 function Remove-OtherCrap {
     Try {
         Write-Host "Detecting McAfee"
-        $mcafeeinstalled = "false"
+        $mcafeeinstalled = $false
         $InstalledSoftware = Get-ChildItem "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall"
         foreach ($obj in $InstalledSoftware) {
             $name = $obj.GetValue('DisplayName')
             if ($name -like "*McAfee*") {
-                $mcafeeinstalled = "true"
+                $mcafeeinstalled = $true
             }
         }
 
@@ -2022,11 +1982,11 @@ function Remove-OtherCrap {
         foreach ($obj32 in $InstalledSoftware32) {
             $name32 = $obj32.GetValue('DisplayName')
             if ($name32 -like "*McAfee*") {
-                $mcafeeinstalled = "true"
+                $mcafeeinstalled = $true
             }
         }
 
-        if ($mcafeeinstalled -eq "true") {
+        if ($mcafeeinstalled) {
             Write-Host "McAfee detected"
             # Remove McAfee bloat
             Write-Host "Downloading McAfee Removal Tool"
@@ -2142,44 +2102,14 @@ function Remove-OtherCrap {
 
 Remove-OtherCrap
 
-
-# Summary report
-function Generate-SummaryReport {
-    Try {
-        Write-Host "Generating summary report"
-        $report = @"
-Summary Report - Windows De-Bloat
-==================================
-Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-==================================
-Actions Taken:
---------------
-- Checked prerequisites
-- Removed Windows Bloatware
-- Removed Xbox Gaming
-- Disabled Edge Surf Game
-- Cleared Start Menu
-- Removed Manufacturer Bloatware
-- Removed other installed crap
-==================================
-"@
-
-        $report | Out-File -FilePath "C:\Celeratec\Logs\DeBloatSummaryReport.txt" -Force
-        Write-Host "Summary report generated"
-    } Catch {
-        Write-Host "Error generating summary report: $_"
-    }
-}
-
-Generate-SummaryReport
-
 # Complete the process
 Try {
     Stop-Transcript
-    Write-Host "De-Bloat process completed"
+    Write-Host "Transcript stopped."
+    Write-Host "De-Bloat process completed."
 } Catch {
-    Write-Host "Error stopping transcript: $_"
+    Write-Host "Error stopping transcript: $_" "ERROR"
 }
 
 # End of Script
-Write-Host "Script execution completed"
+Write-Host "Script execution completed."
