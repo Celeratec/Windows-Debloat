@@ -45,7 +45,7 @@ Try {
         Write-Log "The folder $DebloatFolder was successfully created."
     }
 } Catch {
-    Write-Log "Error creating folder $DebloatFolder: $($_.Exception.Message)" "ERROR"
+    Write-Log "Error creating folder ${DebloatFolder}: $($_.Exception.Message)" "ERROR"
     Exit 1
 }
 
@@ -226,7 +226,7 @@ function Remove-Bloatware {
                 Write-Log "$bloat not found."
             }
         } Catch {
-            Write-Log "Error removing bloatware $bloat: $($_.Exception.Message)" "ERROR"
+            Write-Log "Error removing bloatware ${bloat}: $($_.Exception.Message)" "ERROR"
         }
     }
 }
@@ -334,7 +334,7 @@ function Remove-RegistryKeys {
             Write-Log "Removing $key from registry"
             Remove-KeyWithRetry -key $key
         } Catch {
-            Write-Log "Error removing registry key $key: $($_.Exception.Message)" "ERROR"
+            Write-Log "Error removing registry key ${key}: $($_.Exception.Message)" "ERROR"
         }
     }
 }
