@@ -76,7 +76,7 @@ function Remove-AppxPackages {
                 Write-Log "Successfully removed $packageName."
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to remove $packageName failed: $($_.Exception.Message)" "ERROR"
+                Write-Log "Attempt $($i+1) to remove ${packageName} failed: $($_.Exception.Message)" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
                     Write-Log "Failed to remove $packageName after 3 attempts." "ERROR"
@@ -88,13 +88,13 @@ function Remove-AppxPackages {
     Try {
         $provisionedPackages = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -notin $appsToIgnore}
         foreach ($package in $provisionedPackages) {
-            Write-Log "Attempting to remove provisioned package: $($package.DisplayName)"
+            Write-Log "Attempting to remove provisioned package: $(${package.DisplayName})"
             Remove-PackageWithRetry -removeCommand {Remove-AppxProvisionedPackage -PackageName $package.PackageName -Online -ErrorAction Stop} -packageName $package.DisplayName
         }
 
         $appxPackages = Get-AppxPackage -AllUsers | Where-Object {$_.Name -notin $appsToIgnore}
         foreach ($package in $appxPackages) {
-            Write-Log "Attempting to remove Appx package: $($package.Name)"
+            Write-Log "Attempting to remove Appx package: $(${package.Name})"
             Remove-PackageWithRetry -removeCommand {Remove-AppxPackage -Package $package.PackageFullName -AllUsers -ErrorAction Stop} -packageName $package.Name
         }
     } Catch {
@@ -199,7 +199,7 @@ function Remove-Bloatware {
                 Write-Log "Successfully removed $packageName."
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to remove $packageName failed: $($_.Exception.Message)" "ERROR"
+                Write-Log "Attempt $($i+1) to remove ${packageName} failed: $($_.Exception.Message)" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
                     Write-Log "Failed to remove $packageName after 3 attempts." "ERROR"
@@ -212,7 +212,7 @@ function Remove-Bloatware {
         Try {
             $provisionedPackage = Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like $bloat -ErrorAction SilentlyContinue
             if ($provisionedPackage) {
-                Write-Log "Attempting to remove provisioned package for $bloat."
+                Write-Log "Attempting to remove provisioned package for ${bloat}."
                 Remove-PackageWithRetry -removeCommand {Remove-AppxProvisionedPackage -PackageName $provisionedPackage.PackageName -Online -ErrorAction Stop} -packageName $bloat
             } else {
                 Write-Log "Provisioned package for $bloat not found."
@@ -220,7 +220,7 @@ function Remove-Bloatware {
 
             $appxPackage = Get-AppxPackage -AllUsers | Where-Object Name -like $bloat -ErrorAction SilentlyContinue
             if ($appxPackage) {
-                Write-Log "Attempting to remove $bloat."
+                Write-Log "Attempting to remove ${bloat}."
                 Remove-PackageWithRetry -removeCommand {Remove-AppxPackage -Package $appxPackage.PackageFullName -AllUsers -ErrorAction Stop} -packageName $bloat
             } else {
                 Write-Log "$bloat not found."
@@ -320,7 +320,7 @@ function Remove-RegistryKeys {
                 Write-Log "Successfully removed $key from registry."
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to remove $key from registry failed: $($_.Exception.Message)" "ERROR"
+                Write-Log "Attempt $($i+1) to remove ${key} from registry failed: $($_.Exception.Message)" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
                     Write-Log "Failed to remove $key from registry after 3 attempts." "ERROR"
@@ -331,7 +331,7 @@ function Remove-RegistryKeys {
 
     foreach ($key in $keys) {
         Try {
-            Write-Log "Removing $key from registry"
+            Write-Log "Removing ${key} from registry"
             Remove-KeyWithRetry -key $key
         } Catch {
             Write-Log "Error removing registry key ${key}: $($_.Exception.Message)" "ERROR"
@@ -421,7 +421,7 @@ function Disable-WebSearch {
                 Write-Log "Bing Search disabled in Start Menu"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set DisableWebSearch property at $WebSearch failed: $($_.Exception.Message)" "ERROR"
+                Write-Log "Attempt $($i+1) to set DisableWebSearch property at ${WebSearch} failed: $($_.Exception.Message)" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
                     Write-Log "Failed to set DisableWebSearch property at $WebSearch after 3 attempts." "ERROR"
@@ -452,7 +452,7 @@ function Disable-BingSearchForAllUsers {
                     Write-Log "Set BingSearchEnabled property to 0 at $WebSearch for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set BingSearchEnabled property at $WebSearch for user SID: $sid failed: $($_.Exception.Message)" "ERROR"
+                    Write-Log "Attempt $($i+1) to set BingSearchEnabled property at ${WebSearch} for user SID: ${sid} failed: $($_.Exception.Message)" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
                         Write-Log "Failed to set BingSearchEnabled property at $WebSearch for user SID: $sid after 3 attempts." "ERROR"
@@ -761,7 +761,7 @@ function Disable-LiveTiles {
                     Write-Log "Set NoTileApplicationNotification property to 1 at $Live for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set NoTileApplicationNotification property at $Live for user SID: $sid failed: $($_.Exception.Message)" "ERROR"
+                    Write-Log "Attempt $($i+1) to set NoTileApplicationNotification property at ${Live} for user SID: ${sid} failed: $($_.Exception.Message)" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
                         Write-Log "Failed to set NoTileApplicationNotification property at $Live for user SID: $sid after 3 attempts." "ERROR"
@@ -811,7 +811,7 @@ function Disable-PeopleIcon {
                         Write-Log "Set PeopleBand property to 0 at $People for user SID: $sid"
                         break
                     } Catch {
-                        Write-Log "Attempt $($i+1) to set PeopleBand property at $People for user SID: $sid failed: $($_.Exception.Message)" "ERROR"
+                        Write-Log "Attempt $($i+1) to set PeopleBand property at ${People} for user SID: ${sid} failed: $($_.Exception.Message)" "ERROR"
                         Start-Sleep -Seconds 5
                         if ($i -eq 2) {
                             Write-Log "Failed to set PeopleBand property at $People for user SID: $sid after 3 attempts." "ERROR"
@@ -865,7 +865,7 @@ function Disable-Cortana {
                 Write-Log "Set RestrictImplicitTextCollection and RestrictImplicitInkCollection properties to 1 at $Cortana2"
                 break
             } Catch {
-                Write-Log "Attempt $($i+1) to set properties at $Cortana2 failed: $($_.Exception.Message)" "ERROR"
+                Write-Log "Attempt $($i+1) to set properties at ${Cortana2} failed: $($_.Exception.Message)" "ERROR"
                 Start-Sleep -Seconds 5
                 if ($i -eq 2) {
                     Write-Log "Failed to set properties at $Cortana2 after 3 attempts." "ERROR"
@@ -945,7 +945,7 @@ function Disable-Cortana {
                     Write-Log "Set HarvestContacts property to 0 at $Cortana3 for user SID: $sid"
                     break
                 } Catch {
-                    Write-Log "Attempt $($i+1) to set HarvestContacts property at $Cortana3 for user SID: $sid failed: $($_.Exception.Message)" "ERROR"
+                    Write-Log "Attempt $($i+1) to set HarvestContacts property at ${Cortana3} for user SID: ${sid} failed: $($_.Exception.Message)" "ERROR"
                     Start-Sleep -Seconds 5
                     if ($i -eq 2) {
                         Write-Log "Failed to set HarvestContacts property at $Cortana3 for user SID: $sid after 3 attempts." "ERROR"
@@ -1969,7 +1969,7 @@ function Remove-ManufacturerBloat {
             }
         }
     } Catch {
-        Write-Log "Error detecting manufacturer or removing bloat: $_" "ERROR"
+        Write-Log "Error detecting manufacturer or removing bloat: $($_.Exception.Message)" "ERROR"
     }
 }
 
